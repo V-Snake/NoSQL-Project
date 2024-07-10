@@ -1,5 +1,8 @@
 import express from "express";
-import { getAlteranceListController } from "../controllers/alternance.controller.js";
+import {
+  getCollectionContents,
+  getListDatabaseCollectionController,
+} from "../controllers/alternance.controller.js";
 
 //initialisation de la variable de gestion des routes
 const router = express.Router();
@@ -8,7 +11,10 @@ const router = express.Router();
 // ALTERNANCE REQUETE DATABASE
 // ==========
 
-// route d'affichage des tickets associés à un userS
-router.get("/", getAlteranceListController);
+// route d'affichage de la liste des collections de la db
+router.get("/", getListDatabaseCollectionController);
+
+// route d'affichage de la liste des collections de la db
+router.get("/collections/:name", getCollectionContents);
 
 export default router;
