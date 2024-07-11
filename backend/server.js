@@ -4,6 +4,7 @@ import express from "express";
 import mongoose from "mongoose";
 import helmet from "helmet";
 import morgan from "morgan";
+import cors from 'cors';
 
 // on importe les element de nos userRoutes
 import alternanceRoutes from "./routes/alternance.route.js";
@@ -21,6 +22,7 @@ const { APP_PORT, APP_HOSTNAME, APP_DB_USER_PASS } = process.env;
 
 // on initialise notre application express
 const app = express();
+
 
 // ==========
 // MIDDLEWARES
@@ -42,6 +44,8 @@ app.use(morgan("tiny"));
 app.use(express.json()); // for parsing application/json
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
+// use cross origin to accept request from another domain
+app.use(cors())
 // on connecte notre back et notre base de donne qui s'appelle alterance
 mongoose
   .connect(
