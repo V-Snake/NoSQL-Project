@@ -40,6 +40,7 @@ app.use(morgan("tiny"));
 // middlewares Pour récupérer les données POST en Express simplement
 // Une fois que vous avez mis en place les deux ou une des méthodes ci-dessus vous pouvez les récupérer avec req.body sous forme d'un JSON
 app.use(express.json()); // for parsing application/json
+app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
 // on connecte notre back et notre base de donne qui s'appelle alterance
 mongoose

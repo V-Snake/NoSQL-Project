@@ -40,8 +40,6 @@ const userSchema = new mongoose.Schema(
     profession: {
       type: String,
       maxlength: 50,
-      required: true,
-      default: "visiteur",
     },
     addresse: {
       type: String,
@@ -152,8 +150,15 @@ async function verifyUser(_id, email) {
 }
 
 async function deleteUser(_id) {
-  const deleteUserInfo = await this.deleteOne({ _id }).exec();
-  return deleteUserInfo;
+  try {
+    const deleteUserInfo = await this.deleteOne({ _id }).exec();
+
+    return deleteUserInfo;
+  } catch (error) {
+    // Handle any errors that occur during the deletion process
+    console.error(`Error deleting user with id ${_id}:`, error);
+    throw error; // Rethrow the error to be handled by the caller
+  }
 }
 
 // Creation d'un Model(exemple) mongoose sur la base du Schéma

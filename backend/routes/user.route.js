@@ -1,11 +1,12 @@
 import express from "express";
+
 import {
-  searchUserController,
+  getAllUserController,
   getUserController,
   getUserByIdParamsController,
-  getAllUserController,
-  updateUserController,
   deleteUserController,
+  updateUserController,
+  searchUserController,
 } from "../controllers/users.controller.js";
 
 import { requireAdmin } from "../middleware/middleware.js";

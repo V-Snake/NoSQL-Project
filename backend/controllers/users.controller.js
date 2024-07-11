@@ -16,12 +16,14 @@ export async function searchUserController(req, res) {
 export async function getUserController(req, res) {
   try {
     const _id = req.user.id;
+    console.log(_id);
 
     if (!mongoose.Types.ObjectId.isValid(_id)) {
       return res.send("ID inconnu :" + _id);
     }
 
     const user = await userModel.getUserById(_id);
+    console.log(user);
 
     if (!user)
       return res

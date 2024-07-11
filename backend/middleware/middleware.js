@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { userModel } from "../models/user.model.js";
 
 // cette fonction permet de confirmer si l'utilisateur a des identifiant correcte
 // depuis la base de donner avant de naviguer sur le site
@@ -15,24 +16,20 @@ const verifyUser = async (req, res, next) => {
         .json({ msg: "A token is required for authentication" });
 
     const decoded = jwt.verify(token, APP_TOKEN_SECRET);
+    console.log(decoded);
 
     if (!decoded)
       return res.status(400).json({ msg: "Invalid Authentication." });
 
     const user = await userModel.findOne({ _id: decoded.id });
     req.user = user;
+    // console.log(user);
 
-    if (req._body === true) {
-      console.log("req._body:TRUE");
-
-      if (decoded.id) {
-        next();
-      } else {
-        console.log("Erreur Authentification Body Raw");
-        throw "erreur identification userid";
-      }
+    if (decoded.id) {
+      next();
     } else {
-      throw "erreur identification url params-data";
+      console.log("Erreur Authentification Body Raw");
+      throw "erreur identification userid";
     }
   } catch (err) {
     return res.status(500).json({ msg: err.message });
