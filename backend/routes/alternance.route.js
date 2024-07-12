@@ -3,6 +3,8 @@ import {
   getCollectionContents,
   getListDatabaseCollectionController,
   refreshCollectionMetier,
+  refreshCollectionFormations,
+  refreshCollectionJobs
 } from "../controllers/alternance.controller.js";
 
 //initialisation de la variable de gestion des routes
@@ -22,5 +24,11 @@ router.get("/collections/:name", getCollectionContents);
 // router.post("/collections/1", refreshCollectionMetier);
 
 router.get("/test", refreshCollectionMetier);
+
+
+router.get("/addFormationsFromAPI", refreshCollectionFormations);
+
+router.get("/addJobsFromAPI", refreshCollectionJobs);
+
 
 export default router;

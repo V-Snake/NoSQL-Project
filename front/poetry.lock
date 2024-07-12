@@ -201,6 +201,7 @@ files = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "contourpy"
 version = "1.2.1"
 description = "Python library for calculating contours of 2D quadrilateral grids"
@@ -279,6 +280,8 @@ docs = ["ipython", "matplotlib", "numpydoc", "sphinx"]
 tests = ["pytest", "pytest-cov", "pytest-xdist"]
 
 [[package]]
+=======
+>>>>>>> develop
 name = "dnspython"
 version = "2.6.1"
 description = "DNS toolkit"
@@ -299,6 +302,7 @@ trio = ["trio (>=0.23)"]
 wmi = ["wmi (>=1.5.1)"]
 
 [[package]]
+<<<<<<< HEAD
 name = "fonttools"
 version = "4.53.1"
 description = "Tools to manipulate font files"
@@ -364,6 +368,8 @@ unicode = ["unicodedata2 (>=15.1.0)"]
 woff = ["brotli (>=1.0.1)", "brotlicffi (>=0.8.0)", "zopfli (>=0.1.4)"]
 
 [[package]]
+=======
+>>>>>>> develop
 name = "gitdb"
 version = "4.0.11"
 description = "Git Object Database"
@@ -1132,6 +1138,7 @@ test = ["pytest (>=7)"]
 zstd = ["zstandard"]
 
 [[package]]
+<<<<<<< HEAD
 name = "pyparsing"
 version = "3.1.2"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
@@ -1146,6 +1153,8 @@ files = [
 diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
+=======
+>>>>>>> develop
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -1567,4 +1576,8 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
+<<<<<<< HEAD
 content-hash = "1b403a36bbf0e66f5e0574e126d5234a0e08fa005b94f4c7b69f013c7a38af8f"
+=======
+content-hash = "84149805792816aac65146d919f7a55cb32d2143d1b9a4638160229da9d6f5ea"
+>>>>>>> develop

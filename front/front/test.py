@@ -7,9 +7,12 @@ from pymongo.server_api import ServerApi
 import json
 import pandas as pd
 from dotenv import load_dotenv
+<<<<<<< HEAD
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+=======
+>>>>>>> develop
 
 load_dotenv()
 
@@ -32,6 +35,7 @@ class Test():
         for collection in db.list_collection_names():
             collections.append(collection)
         
+<<<<<<< HEAD
         col1.write("Collections")
         col1.write(pd.DataFrame(collections))
         col2.write("Code ROME")
@@ -162,3 +166,18 @@ class Test():
 
         # Streamlit display
         st.pyplot(fig)
+=======
+        col1.write(pd.DataFrame(collections))
+        col2.write(pd.DataFrame(db.rome.find()))
+        pipeline = [
+            {"$match": {"formation.diplomaLevel": "3 (CAP...)"}},
+            {"$unwind": "$romes"},
+            {"$limit": 5},
+            {"$project": {"_id": 0, "formation": 1}}
+        ]
+        results = list(db.formations.aggregate(pipeline))
+        
+        # Flatten the nested JSON structure
+        df = pd.json_normalize(results)
+        col3.write(df)
+>>>>>>> develop
