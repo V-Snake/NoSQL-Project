@@ -1,37 +1,20 @@
-import streamlit as st
 import requests
+import streamlit as st
 import pandas as pd
-import time
 import altair as alt
-import pydeck as pdk
+from math import radians, cos, sin, asin, sqrt
+from datetime import datetime
 
-# Liste des codes ROME et leurs significations (correctes)
-rome_codes = {
-    "A": "Agriculture, pêche, forêt, espaces naturels",
-    "B": "Arts et façonnage d'ouvrages d'art",
-    "C": "Banque, assurance, immobilier",
-    "D": "Commerce, vente et grande distribution",
-    "E": "Communication, média et multimédia",
-    "F": "Construction, bâtiment et travaux publics",
-    "G": "Hôtellerie, restauration, tourisme, loisirs et animation",
-    "H": "Industrie",
-    "I": "Installation et maintenance",
-    "J": "Santé",
-    "K": "Services à la personne et à la collectivité",
-    "L": "Spectacle",
-    "M": "Support à l'entreprise",
-    "N": "Transport et logistique"
-}
-
-# Liste des niveaux de diplôme
-diploma_levels = [
-    "Non spécifié",
-    "3 (CAP...)",
-    "4 (BAC...)",
-    "5 (BTS, DEUST...)",
-    "6 (Licence, BUT...)",
-    "7 (Master, titre ingénieur...)"
-]
+# Fonction pour obtenir les données depuis l'API avec mise en cache
+@st.cache_data
+def get_data(api_url):
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erreur lors de l'appel à l'API: {e}")
+        return None
 
 # Fonction pour obtenir les coordonnées géographiques d'une adresse
 def get_coordinates(address):
@@ -47,132 +30,238 @@ def get_coordinates(address):
     else:
         return None, None
 
-# Fonction pour obtenir les informations de l'API "La Bonne Alternance" avec gestion des erreurs et des tentatives
-def get_alternance_info(lat, lon, rome_domain, radius, diploma, retries=3):
-    diploma_param = '' if diploma == "Non spécifié" else f'&diploma={diploma}'
-    url = f'https://labonnealternance-recette.apprentissage.beta.gouv.fr/api/v1/formations?romeDomain={rome_domain}&latitude={lat}&longitude={lon}&radius={radius}{diploma_param}&caller=%20&options=with_description'
-    
-    for attempt in range(retries):
+# Fonction pour calculer la distance entre deux points géographiques
+def haversine(lon1, lat1, lon2, lat2):
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    r = 6371
+    return c * r
+
+# Fonction pour filtrer les données en fonction des coordonnées et du rayon
+def filter_data_by_radius(data, lat, lon, radius):
+    filtered_data = []
+    for item in data:
         try:
-            response = requests.get(url)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            st.warning(f"Problème de connexion, tentative {attempt + 1} sur {retries}. Réessai dans 1 seconde.")
-            time.sleep(1)
-            if attempt == retries - 1:
-                st.error("Échec de la récupération des données après plusieurs tentatives.")
-                return None
+            item_lat = item["formation"]["place"]["latitude"] if "formation" in item else item["place"]["latitude"]
+            item_lon = item["formation"]["place"]["longitude"] if "formation" in item else item["place"]["longitude"]
+            distance = haversine(lon, lat, item_lon, item_lat)
+            if distance <= radius:
+                filtered_data.append({
+                    "latitude": item_lat,
+                    "longitude": item_lon,
+                    "name": item["formation"]["title"] if "formation" in item else item["title"],
+                    "address": item["formation"]["place"]["fullAddress"] if "formation" in item else item["place"]["fullAddress"],
+                    "phone": item["formation"]["contact"]["phone"] if "formation" in item else item["contact"].get("phone", "N/A")
+                })
+        except KeyError:
+            continue
+    return pd.DataFrame(filtered_data)
 
-# Fonction pour compter les offres par domaine ROME et récupérer les coordonnées des offres
-def count_offers(lat, lon, radius, selected_diploma):
-    rome_counts = {key: 0 for key in rome_codes.keys()}
-    all_formations = []
-    formation_locations = []
+# URLs des APIs
+formations_api_url = "http://localhost:5000/api/alternance/collections/formations"
+jobs_api_url = "http://localhost:5000/api/alternance/collections/jobs"
+effectif_api_url = "http://localhost:5000/api/alternance/collections/EffectifParSpecialite"
+metiers_api_url = "https://labonnealternance-recette.apprentissage.beta.gouv.fr/api/v1/metiers/intitule?label="
+
+# Récupérer les données
+formations_data = get_data(formations_api_url)
+jobs_data = get_data(jobs_api_url)
+effectif_data = get_data(effectif_api_url)
+
+# Créer des DataFrames à partir des coordonnées extraites
+formations_coordinates = []
+jobs_coordinates = []
+if formations_data:
+    for formation in formations_data:
+        try:
+            latitude = formation["formation"]["place"]["latitude"]
+            longitude = formation["formation"]["place"]["longitude"]
+            formations_coordinates.append({"latitude": latitude, "longitude": longitude})
+        except KeyError:
+            continue
+if jobs_data:
+    for job in jobs_data:
+        try:
+            latitude = job["place"]["latitude"]
+            longitude = job["place"]["longitude"]
+            jobs_coordinates.append({"latitude": latitude, "longitude": longitude})
+        except KeyError:
+            continue
+formations_df = pd.DataFrame(formations_coordinates)
+jobs_df = pd.DataFrame(jobs_coordinates)
+
+# DataFrame pour EffectifParSpecialite
+effectif_df = pd.DataFrame(effectif_data)
+
+# Fonction pour extraire la date correctement
+def extract_date(date):
+    try:
+        if isinstance(date, dict) and '$date' in date:
+            return date['$date']
+        elif isinstance(date, str):
+            return date
+        return None
+    except:
+        return None
+
+# Convertir la colonne date en datetime et extraire l'année
+effectif_df['date'] = pd.to_datetime(effectif_df['date'].apply(extract_date), errors='coerce')
+effectif_df['year'] = effectif_df['date'].dt.year
+
+# Sidebar for section selection
+st.sidebar.title("Sections")
+section = st.sidebar.selectbox("Choisissez une section", ["Cartes des Formations et Offres", "Comparaison des Effectifs", "Orientation"])
+
+# Section 1: Cartes des Formations et Offres
+if section == "Cartes des Formations et Offres":
+    st.title('Carte des formations et des offres d\'alternance en France')
+
+    st.subheader("Formations et offres d'alternance dans toute la France")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.header("Formations dans toute la France")
+        st.map(formations_df, zoom=4, use_container_width=True)
+
+    with col2:
+        st.header("Offres d'alternance dans toute la France")
+        st.map(jobs_df, zoom=4, use_container_width=True)
+
+    st.subheader("Nombre de formations et d'offres d'alternance")
+    data = {
+        "Type": ["Formations", "Offres d'alternance"],
+        "Nombre": [len(formations_df), len(jobs_df)]
+    }
+    chart_df = pd.DataFrame(data)
+    st.bar_chart(chart_df.set_index("Type"))
+
+    st.subheader("Recherche par adresse et rayon")
+    address = st.text_input('Entrez l\'adresse:')
+    radius = st.number_input('Entrez le rayon de recherche en km:', min_value=1, max_value=200, value=30)
+
+    if st.button('Obtenir les informations'):
+        if address:
+            lat, lon = get_coordinates(address)
+            if lat and lon:
+                st.success(f'Les coordonnées de l\'adresse sont :\nLatitude: {lat}\nLongitude: {lon}')
+                
+                filtered_formations_df = filter_data_by_radius(formations_data, lat, lon, radius)
+                filtered_jobs_df = filter_data_by_radius(jobs_data, lat, lon, radius)
+
+                col3, col4 = st.columns(2)
+
+                if not filtered_formations_df.empty:
+                    with col3:
+                        st.header(f"Formations dans un rayon de {radius} km autour de {address}")
+                        st.map(filtered_formations_df[["latitude", "longitude"]], zoom=10, use_container_width=True)
+                else:
+                    with col3:
+                        st.warning(f"Aucune formation trouvée dans un rayon de {radius} km autour de {address}")
+
+                if not filtered_jobs_df.empty:
+                    with col4:
+                        st.header(f"Offres d'alternance dans un rayon de {radius} km autour de {address}")
+                        st.map(filtered_jobs_df[["latitude", "longitude"]], zoom=10, use_container_width=True)
+                else:
+                    with col4:
+                        st.warning(f"Aucune offre d'alternance trouvée dans un rayon de {radius} km autour de {address}")
+
+                st.subheader(f"Nombre de formations et d'offres d'alternance dans un rayon de {radius} km autour de {address}")
+                data_filtered = {
+                    "Type": ["Formations", "Offres d'alternance"],
+                    "Nombre": [len(filtered_formations_df), len(filtered_jobs_df)]
+                }
+                chart_filtered_df = pd.DataFrame(data_filtered)
+                st.bar_chart(chart_filtered_df.set_index("Type"))
+
+# Section 2: Comparaison des Effectifs
+elif section == "Comparaison des Effectifs":
+    st.title('Comparaison des Effectifs par Spécialité')
+
+    specialites = effectif_df['lib_long_gpe_spec_3'].unique()
+    specialite1 = st.selectbox("Sélectionnez la première spécialité", specialites)
+    specialite2 = st.selectbox("Sélectionnez la deuxième spécialité", specialites)
+
+    if st.button("Comparer"):
+        df1 = effectif_df[effectif_df['lib_long_gpe_spec_3'] == specialite1]
+        df2 = effectif_df[effectif_df['lib_long_gpe_spec_3'] == specialite2]
+
+        df1_grouped = df1.groupby('year')['effectif_de_jeunes'].sum().reset_index()
+        df2_grouped = df2.groupby('year')['effectif_de_jeunes'].sum().reset_index()
+
+        chart_data1 = pd.DataFrame({
+            'Année': df1_grouped['year'],
+            'Effectif': df1_grouped['effectif_de_jeunes'],
+            'Spécialité': [specialite1] * len(df1_grouped)
+        })
+
+        chart_data2 = pd.DataFrame({
+            'Année': df2_grouped['year'],
+            'Effectif': df2_grouped['effectif_de_jeunes'],
+            'Spécialité': [specialite2] * len(df2_grouped)
+        })
+
+        chart_data = pd.concat([chart_data1, chart_data2])
+
+        chart = alt.Chart(chart_data).mark_line().encode(
+            x='Année:O',
+            y='Effectif:Q',
+            color='Spécialité:N',
+            tooltip=['Année', 'Spécialité', 'Effectif']
+        ).properties(
+            width=800,
+            height=400
+        )
+
+        st.altair_chart(chart)
+
+
+# Section 3: Orientation
+elif section == "Orientation":
+    st.title('Trouver des Formations par Métier')
+
+    metier = st.text_input("Entrez le métier recherché:")
     
-    for rome_code in rome_codes.keys():
-        alternance_info = get_alternance_info(lat, lon, rome_code, radius, selected_diploma)
-        time.sleep(0.2)  # Pause pour respecter la limite d'appels (5 appels par seconde)
-        if alternance_info and alternance_info.get('results'):
-            rome_counts[rome_code] = len(alternance_info['results'])
-            all_formations.extend(alternance_info['results'])
-            
-            # Récupérer les coordonnées des offres de formation
-            for formation in alternance_info['results']:
-                if 'place' in formation and formation['place']['latitude'] and formation['place']['longitude']:
-                    formation_locations.append({
-                        'latitude': formation['place']['latitude'],
-                        'longitude': formation['place']['longitude'],
-                        'rome_code': rome_code
-                    })
-    
-    return rome_counts, all_formations, formation_locations
+    if st.button('Rechercher'):
+        if metier:
+            metiers_api_url_full = metiers_api_url + metier
+            metiers_data = get_data(metiers_api_url_full)
 
-# Fonction pour agréger les formations par coordonnée
-def aggregate_formations(formation_locations):
-    df = pd.DataFrame(formation_locations)
-    aggregated = df.groupby(['latitude', 'longitude']).size().reset_index(name='count')
-    return aggregated
+            if metiers_data and 'coupleAppellationRomeMetier' in metiers_data:
+                code_rome_set = set()
+                for item in metiers_data['coupleAppellationRomeMetier']:
+                    if 'codeRome' in item and isinstance(item['codeRome'], str):
+                        code_rome_set.add(item['codeRome'])
 
-# Titre de l'application
-st.title('Géocodage et Informations sur l\'Alternance en France')
+                if code_rome_set:
+                    formations_filtered = []
+                    for formation in formations_data:
+                        try:
+                            romes = formation["formation"]["romes"]
+                            for rome in romes:
+                                if rome["code"] in code_rome_set:
+                                    formations_filtered.append({
+                                        "title": formation["formation"]["title"],
+                                        "address": formation["formation"]["place"]["fullAddress"],
+                                        "phone": formation["formation"]["contact"].get("phone", "N/A")
+                                    })
+                                    break
+                        except KeyError:
+                            continue
 
-# Formulaire pour entrer l'adresse et le rayon de recherche
-address = st.text_input('Entrez l\'adresse:')
-radius = st.number_input('Entrez le rayon de recherche en km:', min_value=1, max_value=200, value=30)
-selected_diploma = st.selectbox('Sélectionnez le niveau de diplôme:', diploma_levels)
-
-# Bouton pour soumettre le formulaire
-if st.button('Obtenir les informations'):
-    if address:
-        lat, lon = get_coordinates(address)
-        if lat and lon:
-            st.success(f'Les coordonnées de l\'adresse sont :\nLatitude: {lat}\nLongitude: {lon}')
-            # Compter les offres par domaine ROME et récupérer les coordonnées des offres
-            rome_counts, all_formations, formation_locations = count_offers(lat, lon, radius, selected_diploma)
-            
-            if rome_counts:
-                # Créer un DataFrame pour les données du graphique
-                df = pd.DataFrame(list(rome_counts.items()), columns=['ROME', 'Nombre_offres'])
-                df['Libelle'] = df['ROME'].map(rome_codes)
-                df = df.set_index('Libelle')
-
-                # Générer le graphique avec Altair
-                chart = alt.Chart(df.reset_index()).mark_bar().encode(
-                    x=alt.X('Libelle', sort=None, title='Domaine ROME'),
-                    y=alt.Y('Nombre_offres', title='Nombre d\'offres'),
-                    tooltip=['Libelle', 'Nombre_offres']
-                ).properties(
-                    title='Nombre d\'offres par domaine ROME',
-                    width=800,
-                    height=400
-                ).configure_axis(
-                    labelAngle=-45
-                )
-
-                st.altair_chart(chart)
-
-                # Créer un DataFrame pour les coordonnées des formations avec une couleur par code ROME
-                location_df = pd.DataFrame(formation_locations)
-                location_df['color'] = location_df['rome_code'].apply(lambda x: hash(x) % 255)
-
-                # Générer la carte avec Streamlit
-                st.map(location_df[['latitude', 'longitude']])
-
-                # Agréger les formations par coordonnée
-                aggregated_df = aggregate_formations(formation_locations)
-
-                # Calculer l'échelle d'élévation
-                max_count = aggregated_df['count'].max()
-                elevation_scale = 1000 / max_count if max_count else 1
-
-                # Générer la carte avec Pydeck et ajouter de la hauteur
-                layer = pdk.Layer(
-                    "ColumnLayer",
-                    aggregated_df,
-                    get_position=["longitude", "latitude"],
-                    get_elevation="count",
-                    elevation_scale=elevation_scale,
-                    get_fill_color="[180, 0, 200, 140]",
-                    radius=200,
-                    pickable=True,
-                    extruded=True,
-                )
-                view_state = pdk.ViewState(
-                    latitude=lat,
-                    longitude=lon,
-                    zoom=10,
-                    pitch=50
-                )
-                deck = pdk.Deck(
-                    layers=[layer],
-                    initial_view_state=view_state,
-                    tooltip={"text": "Nombre d'offres: {count}"}
-                )
-
-                st.pydeck_chart(deck)
-
+                    if formations_filtered:
+                        st.subheader(f"Formations correspondant au métier : {metier}")
+                        for formation in formations_filtered:
+                            st.write(f"**{formation['title']}**")
+                            st.write(f"Adresse: {formation['address']}")
+                            st.write(f"Téléphone: {formation['phone']}")
+                            st.write("---")
+                    else:
+                        st.warning(f"Aucune formation trouvée pour le métier : {metier}")
+            else:
+                st.warning(f"Aucune donnée trouvée pour le métier : {metier}")
         else:
-            st.error('Adresse non trouvée. Veuillez vérifier l\'adresse et réessayer.')
-    else:
-        st.warning('Veuillez entrer une adresse.')
+            st.warning('Veuillez entrer un métier.')
