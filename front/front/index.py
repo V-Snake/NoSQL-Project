@@ -42,7 +42,7 @@ def main():
         "—": intro,
         "📊Graph: job per region": JobRegion().get_input,
         "🎓Show Collections": Test().show_input,
-        "📈User auth": Auth().main,
+        # "📈User auth": Auth().main,
     }
     demo_name = st.sidebar.selectbox("Choose a demo", page_names_to_funcs.keys())
     page_names_to_funcs[demo_name]()
