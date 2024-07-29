@@ -20,7 +20,7 @@ uri = 'mongodb+srv://root:root@nosql.saqf8aj.mongodb.net/?retryWrites=true&w=maj
 client = MongoClient(uri, server_api=ServerApi('1'))
 db = client['alternance']
 
-class Test():
+class Agreations():
     def __init__(self):
         pass
     

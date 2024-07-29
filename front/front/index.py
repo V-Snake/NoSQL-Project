@@ -6,9 +6,10 @@ import altair as alt
 import pydeck as pdk
 
 from region import JobRegion
-from test import Test
+from agregations import Agreations
 
 from authentification import Auth
+from maps2 import AlternanceApp
 
 
 st.set_page_config(layout="wide")
@@ -40,9 +41,8 @@ def intro():
 def main():
     page_names_to_funcs = {
         "—": intro,
-        "📊Graph: job per region": JobRegion().get_input,
-        "🎓Show Collections": Test().show_input,
-        "📈User auth": Auth().main,
+        "🎓Show Collections": Agreations().show_input,
+        
     }
     demo_name = st.sidebar.selectbox("Choose a demo", page_names_to_funcs.keys())
     page_names_to_funcs[demo_name]()

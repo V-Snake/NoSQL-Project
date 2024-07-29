@@ -4,12 +4,20 @@ import pandas as pd
 import altair as alt
 from math import radians, cos, sin, asin, sqrt
 from datetime import datetime
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+session = requests.Session()
+retries = Retry(total=5, backoff_factor=0.1)
+adapter = HTTPAdapter(max_retries=retries)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
 
 # Fonction pour obtenir les données depuis l'API avec mise en cache
 @st.cache_data
 def get_data(api_url):
     try:
-        response = requests.get(api_url)
+        response = session.get(api_url, timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -65,6 +73,7 @@ formations_api_url = "http://localhost:5000/api/alternance/collections/formation
 jobs_api_url = "http://localhost:5000/api/alternance/collections/jobs"
 effectif_api_url = "http://localhost:5000/api/alternance/collections/EffectifParSpecialite"
 metiers_api_url = "https://labonnealternance-recette.apprentissage.beta.gouv.fr/api/v1/metiers/intitule?label="
+
 
 # Récupérer les données
 formations_data = get_data(formations_api_url)
