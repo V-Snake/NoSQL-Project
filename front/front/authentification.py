@@ -1,8 +1,8 @@
 import streamlit as st
 import requests
 
-class Auth():
-    def __init__():
+class Auth:
+    def __init__(self):
         pass
     
     # Fonction pour s'inscrire
@@ -38,7 +38,8 @@ class Auth():
             st.error(f"Erreur de connexion : {e}")
             return None
 
-    def main():
+    def main(self,a):
+        a += 1
         st.title("PAGE D'AUTHENTIFICATION")
 
         
@@ -99,5 +100,6 @@ class Auth():
                 st.session_state['user'] = None
                 st.experimental_rerun()
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    auth = Auth()
+    auth.main(1)

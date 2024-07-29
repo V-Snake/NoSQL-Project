@@ -6,7 +6,6 @@ import altair as alt
 import pydeck as pdk
 from vars import *
 
-# Define the job_region class
 class JobRegion:
     def __init__(self):
         self.api_key = '13e7eb7e21f74cd6b4dc0f5ad0fcce30'  # Clé API OpenCage
@@ -66,7 +65,7 @@ class JobRegion:
         aggregated = df.groupby(['latitude', 'longitude']).size().reset_index(name='count')
         return aggregated
 
-    def get_input(self):
+    def run(self):
         st.title('Géocodage et Informations sur l\'Alternance en France')
 
         address = st.text_input('Entrez l\'adresse:')
@@ -138,3 +137,8 @@ class JobRegion:
                     st.error('Adresse non trouvée. Veuillez vérifier l\'adresse et réessayer.')
             else:
                 st.warning('Veuillez entrer une adresse.')
+
+# # Utilisation de la classe JobRegion
+# if __name__ == "__main__":
+#     job_region = JobRegion()
+#     job_region.run()
